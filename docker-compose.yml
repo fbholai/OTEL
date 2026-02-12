@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config", "/etc/otelcol/config.yaml"]
+    ports:
+      - "9464:9464"
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol/config.yaml
+    networks: [otelnet]
+
+  pyapp:
+    build: .
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcol:4318/v1/metrics
+      #OTLP_HTTP_ENDPOINT: http://otelcol:4318
+      OTEL_SERVICE_NAME: pyapp
+    depends_on:
+      - otelcol
+    networks: [otelnet]
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks: [otelnet]
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    networks: [otelnet]
+
+networks:
+  otelnet:
+    driver: bridge
